@@ -1,0 +1,94 @@
+# Enhanced Peer Review Analysis System - .gitignore
+
+# Archive folders and old versions
+Archive/
+Archive_*/
+old_*
+*_archive/
+*_backup/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Data files (optional - uncomment if you don't want to track data)
+# *.xlsx
+# *.csv
+# *.html
+
+# Test output files
+test_output/
+temp_reports/
+*_test.html
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp_*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows specific
+desktop.ini
+
+# Excel temporary files
+~$*.xlsx
+~$*.xls
