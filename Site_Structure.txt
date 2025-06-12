@@ -1,0 +1,19 @@
+enhanced-peer-review-analysis/
+├── README.md                          # Main documentation
+├── .gitignore                         # Updated to include sample data
+├── Quick_Reference.md                 # Quick start guide
+├── Peer_Review_Quality_Rubric.md     # Assessment rubric
+├── src/                              # Source code
+│   ├── enhanced_instructor_report.py
+│   ├── enhanced_gui_launcher.py
+│   ├── enhanced_group_reports.py
+│   └── reliability_analyzer.py
+├── sample_data/                      # Demo data directory
+│   ├── README.md                     # Detailed demo data documentation
+│   ├── OVERVIEW.md                   # Quick overview of demo files
+│   ├── demo_peer_review_data.xlsx    # Sample peer review responses
+│   └── demo_student_roster.xlsx      # Sample student roster
+├── legacy/                           # Original tools
+│   ├── instructor_report.py
+│   └── gui_launcher.py
+└── docs/                            # Additional documentation
