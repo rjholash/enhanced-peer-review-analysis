@@ -1,9 +1,26 @@
-# Enhanced Peer Review Analysis System
+## Enhanced Peer Review Analysis System
 
-## Overview
-
+Overview
 This comprehensive peer review analysis system provides advanced statistical reliability assessment for student peer evaluations, including inter-rater reliability metrics, individual reviewer quality scoring, and automated feedback generation.
 
+### How I Use This System
+
+### The Assignment
+Students work in groups to create YouTube videos reviewing products that make scientific claims. They investigate whether the science actually supports these claims. Each student then peer reviews 2 other groups' videos using a Microsoft Form.
+My Workflow
+
+- Download class list from D2L with group assignments
+- Use Excel to randomly assign students to review 2 groups (not their own)
+- Send mail-merge emails with review assignments and Form link
+- Download completed reviews from Microsoft Forms
+- Run this analysis system to generate instructor reports and student feedback
+
+## Why This Works
+
+- Teaches Scientific Literacy: Students learn to critically evaluate real-world scientific claims
+- Develops Peer Review Skills: Statistical feedback helps students become better, less biased reviewers
+- Integrates Course Content: Connects peer review experience to scientific process concepts we cover in class
+- Ensures Fair Grading: Uses reliability measures (Cronbach's alpha, ICC) to weight peer evaluations appropriately
 ## System Architecture
 
 ### Core Components

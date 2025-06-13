@@ -395,8 +395,13 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
         if num_reviews < 2:
             base_grade = base_grade * 0.5  # Half marks for incomplete reviews
         
-        # Apply time penalty if total time for 2 reviews is under 2 minutes
-        elif total_time_minutes < 2.0:
+        # Time-based adjustments with more supportive messaging and bonus for thorough reviews
+        elif total_time_minutes > 20.0:  # Very thorough reviews - give bonus
+            base_grade = min(10.0, base_grade + 1.0)  # Add 1 point bonus, max 10/10
+        elif total_time_minutes < 0.5:  # Less than 30 seconds - almost impossible
+            # Flag for instructor follow-up rather than automatic penalty
+            base_grade = max(3.0, base_grade - 3.0)  # Still apply penalty but encourage contact
+        elif total_time_minutes < 2.0:  # Less than 2 minutes but more than 30 seconds
             base_grade = max(3.0, base_grade - 3.0)  # Reduce by 3 points, minimum 3/10
         
         # Apply penalty only for extreme bias (>2 standard deviations)
@@ -408,48 +413,52 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
     def get_feedback_message(score, grade, total_time_minutes, num_reviews, severity_bias, severity_bias_zscore):
         """Generate personalized feedback based on reliability score and review completion."""
         
-        # Review completion issues
+        # Review completion issues with more supportive messaging and recognition for thorough work
         completion_warning = ""
         if num_reviews < 2:
             completion_warning = f" **Important:** You completed only {num_reviews} review(s) instead of the required 2. This has resulted in half marks being awarded."
+        elif total_time_minutes > 20.0:  # Recognize thorough reviews
+            completion_warning = f" **Thank you for the thoughtful evaluation.** You spent {total_time_minutes:.1f} minutes on your reviews, which has earned you a bonus point."
+        elif total_time_minutes < 0.5:  # Less than 30 seconds
+            completion_warning = f" **Please Contact Me:** Your recorded time was {total_time_minutes:.1f} minutes ({total_time_minutes*60:.0f} seconds) for both reviews. This seems unusually short and may indicate a technical issue with the form or browser. Please email me to discuss - if there was a technical problem, I will adjust your grade accordingly. No questions asked, I just want to ensure fair assessment."
         elif total_time_minutes < 2.0:
-            completion_warning = f" **Note:** Your total time for both reviews was {total_time_minutes:.1f} minutes, which suggests insufficient consideration. This has reduced your grade."
+            completion_warning = f" **Note:** Your total time for both reviews was {total_time_minutes:.1f} minutes. For thorough peer review, we typically expect 1-2 minutes per review minimum. If you had technical difficulties or other issues affecting your timing, please contact me to discuss."
         
-        # Bias explanation (informational, not necessarily penalized)
+        # Bias explanation (informational, not necessarily penalized) with focus on academic standards
         bias_explanation = ""
         if not pd.isna(severity_bias) and abs(severity_bias) > 0.5:
             if severity_bias > 0.5:
                 if not pd.isna(severity_bias_zscore) and severity_bias_zscore > 2.0:
-                    bias_explanation = f" Your reviews rate significantly higher than peers (z-score: {severity_bias_zscore:.1f}), which may indicate leniency bias. This extreme bias has affected your grade."
+                    bias_explanation = f" Your reviews rate significantly higher than peers (z-score: {severity_bias_zscore:.1f}), indicating potential grade inflation concerns. This extreme bias has affected your grade."
                 else:
-                    bias_explanation = f" Your reviews tend to rate higher than peers (avg difference: +{severity_bias:.1f}), which may indicate leniency bias toward groups you know well. This is noted but not penalized."
+                    bias_explanation = f" Your reviews tend to rate higher than peers (avg difference: +{severity_bias:.1f}), which may indicate generous scoring tendencies. Consider whether your standards align with the evaluation criteria. This is noted but not penalized."
             else:
                 if not pd.isna(severity_bias_zscore) and severity_bias_zscore < -2.0:
                     bias_explanation = f" Your reviews rate significantly lower than peers (z-score: {severity_bias_zscore:.1f}), which may indicate very high standards or severity bias. This extreme bias has affected your grade."
                 else:
-                    bias_explanation = f" Your reviews tend to rate lower than peers (avg difference: {severity_bias:.1f}), which may indicate high standards or honest assessment. This is noted but not penalized."
+                    bias_explanation = f" Your reviews tend to rate lower than peers (avg difference: {severity_bias:.1f}), which may indicate high standards or careful evaluation. This is noted but not penalized."
         
-        # Base reliability message
+        # Base reliability message with more encouraging tone
         base_message = ""
         if pd.isna(score) or score == 'N/A':
             base_message = "Your peer review completion has been recorded. Insufficient data for detailed reliability analysis."
         elif score >= 85:
-            base_message = "Excellent work! Your reviews show high reliability and consistency with peer consensus. You demonstrate strong critical evaluation skills."
+            base_message = "Excellent work! Your reviews show high reliability and consistency with peer consensus. You demonstrate strong critical evaluation skills and are contributing meaningfully to the peer learning process."
         elif score >= 75:
-            base_message = "Good work! Your reviews are generally reliable and consistent. You show good understanding of the evaluation criteria."
+            base_message = "Good work! Your reviews are generally reliable and consistent with peer consensus. You show solid understanding of the evaluation criteria and are developing strong peer assessment skills."
         elif score >= 65:
-            base_message = "Satisfactory work. Your reviews show reasonable consistency, with some room for improvement in alignment with peer consensus."
+            base_message = "Good progress! Your reviews show reasonable consistency with peer consensus. You're developing good evaluation skills - with continued practice, you can further strengthen your alignment with academic assessment standards."
         elif score >= 55:
-            base_message = "Your reviews show moderate consistency. Consider reviewing the evaluation criteria more carefully to improve alignment with peers."
+            base_message = "You're making progress in developing peer review skills. Your reviews show moderate consistency with peers. Focusing on the evaluation criteria and examples from class discussions will help you build stronger assessment abilities."
         elif score >= 45:
-            base_message = "Your reviews show some inconsistency with peer consensus." + bias_explanation + " This may reflect genuine differences in assessment standards."
+            base_message = "Your reviews show some variation from peer consensus, which can reflect independent thinking or different assessment perspectives. Consider discussing evaluation approaches with classmates or the instructor to calibrate your assessments."
         else:
-            base_message = "Your reviews show significant inconsistency with peer consensus." + bias_explanation + " This may indicate very different assessment standards or misunderstanding of the criteria."
+            base_message = "Your reviews show significant variation from peer consensus. This presents a great learning opportunity - let's discuss evaluation strategies to help you develop stronger alignment with academic assessment standards."
         
-        # Appeal process
+        # Support and follow-up message
         appeal_message = ""
         if score < 65 or total_time_minutes < 2.0 or num_reviews < 2 or (not pd.isna(severity_bias_zscore) and abs(severity_bias_zscore) > 2.0):
-            appeal_message = " If you believe this assessment does not reflect the quality of your reviews or if there are extenuating circumstances, please contact the instructor to discuss your evaluation."
+            appeal_message = " If you have questions about this assessment, please contact me."
         
         return base_message + completion_warning + appeal_message
 
@@ -582,6 +591,79 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
             justify="left", float_format="%.3f"
         )
 
+    # ── Generate instructor follow-up section for short completion times ───
+    def generate_instructor_followup_section(reviewer_scores, time_data):
+        """Generate a section highlighting students who need personal follow-up."""
+        
+        # Identify students needing follow-up based on extremely short times
+        followup_needed = []
+        
+        for _, row in time_data.iterrows():
+            total_time = row.get('DurationMin', 0)
+            if pd.isna(total_time):
+                continue
+                
+            # Group by email to get total time for all reviews
+            student_time = time_data[time_data['email_clean'] == row['email_clean']]['DurationMin'].sum()
+            
+            if student_time < 0.5:  # Less than 30 seconds total
+                student_reviews = time_data[time_data['email_clean'] == row['email_clean']]
+                num_reviews = len(student_reviews)
+                
+                # Get reliability score if available
+                reliability_score = 'N/A'
+                grade = 'N/A'
+                if not reviewer_scores.empty:
+                    student_data = reviewer_scores[reviewer_scores['reviewer_email'] == row['email_clean']]
+                    if not student_data.empty:
+                        reliability_score = student_data.iloc[0].get('reliability_score', 'N/A')
+                        grade = student_data.iloc[0].get('grade', 'N/A')
+                
+                followup_needed.append({
+                    'email': row['email_clean'],
+                    'total_time': student_time,
+                    'num_reviews': num_reviews,
+                    'reliability_score': reliability_score,
+                    'grade': grade,
+                    'reason': 'Extremely short completion time - possible technical issue'
+                })
+        
+        # Remove duplicates (since we might have multiple rows per student)
+        followup_needed = {item['email']: item for item in followup_needed}.values()
+        
+        if not followup_needed:
+            return "<h2>Student Follow-up Status</h2><p><strong>✓ No students requiring immediate follow-up</strong> - All students had reasonable completion times.</p>"
+        
+        html = "<h2>Students Requiring Personal Follow-up</h2>"
+        html += "<div style='background-color: #fff3cd; padding: 15px; margin: 10px 0; border-left: 4px solid #ffc107;'>"
+        html += "<p><strong>⚠️ The following students had unusually short completion times and should be contacted personally:</strong></p>"
+        html += "<table class='table'>"
+        html += "<tr><th>Student Email</th><th>Total Time (min)</th><th>Reviews Completed</th><th>Current Grade</th><th>Suggested Action</th></tr>"
+        
+        for student in followup_needed:
+            html += f"<tr style='background-color: #ffeaa7;'>"
+            html += f"<td>{student['email']}</td>"
+            html += f"<td>{student['total_time']:.1f} ({student['total_time']*60:.0f} sec)</td>"
+            html += f"<td>{student['num_reviews']}</td>"
+            html += f"<td>{student['grade']}/10</td>"
+            html += f"<td>Contact for possible technical issues</td>"
+            html += f"</tr>"
+        
+        html += "</table>"
+        html += "<div style='background-color: #e7f3ff; padding: 10px; margin-top: 15px; border: 1px solid #007acc; border-radius: 5px;'>"
+        html += "<p><strong>📧 Suggested Email Template:</strong></p>"
+        html += "<div style='background-color: white; padding: 10px; border-left: 3px solid #007acc; font-style: italic;'>"
+        html += "<p>Hi [Student Name],</p>"
+        html += "<p>I noticed your peer review completion time was quite short (under 30 seconds). This might indicate a technical issue with the form or browser.</p>"
+        html += "<p>If you experienced any difficulties, please let me know and I'll be happy to adjust your grade. No explanation needed - I just want to ensure everyone gets fair assessment.</p>"
+        html += "<p>Best regards,<br>[Your name]</p>"
+        html += "</div></div></div>"
+        
+        return html
+
+    # Generate the follow-up section
+    followup_html = generate_instructor_followup_section(reviewer_scores, time_data)
+
     # ── Enhanced Jinja2 template ────────────────────────────────────
     tmpl = Template(
         """
@@ -617,6 +699,8 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
             <h2>Group Results with Reliability Metrics</h2>
             {{ group_html | safe }}
         </div>
+
+        {{ followup_html | safe }}
 
         {% if reviewer_quality_html %}
         <div class="section">
@@ -679,8 +763,10 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
             • 6: Reliability Score 45-54 (Needs Improvement)<br>
             • 5: Reliability Score 35-44 (Poor)<br>
             • 4: Reliability Score <35 (Very Poor)<br><br>
-            <strong>Penalties Applied:</strong><br>
+            <strong>Grading Adjustments:</strong><br>
+            • <span style="color: green;">Thorough reviews (>20 minutes total): +1 bonus point</span><br>
             • Incomplete reviews (<2 required): Half marks<br>
+            • Very short completion time (<30 seconds total): -3 points + instructor follow-up<br>
             • Insufficient time (<2 minutes total for both reviews): -3 points<br>
             • Extreme bias (>2 standard deviations from peer average): -2 points<br>
             • Minor bias variations are noted but not penalized<br><br>
@@ -696,6 +782,7 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
         time_html=html_time,
         reviewer_quality_html=html_reviewer_quality,
         student_feedback_html=html_student_feedback,
+        followup_html=followup_html,
         one_only=tag(one_only),
         three_plus=tag(three_plus),
         no_submit=tag(no_submit),
