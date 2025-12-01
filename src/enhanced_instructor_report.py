@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """
+You need to run enhanced _gui_launcher.py to use this script!
 Enhanced Instructor peer‑evaluation report generator with reliability metrics
 Includes inter-rater reliability (ICC) and Cronbach's alpha calculations
 """
@@ -304,6 +305,9 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
         .reset_index(names="Group")
         .sort_values("Group")
     )
+    
+    # Add column for mean multiplied by 0.47 (47% weighting for peer evaluation component)
+    group_stats["Peer Eval (47%)"] = (group_stats["Mean"] * 0.47).round(1)
 
     # Add reliability metrics to group stats if available
     if not reviewer_scores.empty:
@@ -371,7 +375,7 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
 
     # ── Generate individual student feedback sections ───────────────
     def reliability_score_to_grade(score, total_time_minutes, num_reviews, severity_bias_zscore):
-        """Convert reliability score (0-100) to grade out of 10, adjusted for time and review count."""
+        """Convert reliability score (0-100) to grade out of 10, with improved graduated time adjustments."""
         base_grade = 7.0  # Default grade
         
         if pd.isna(score) or score == 'N/A':
@@ -394,73 +398,105 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
         # Apply penalty for incomplete reviews (less than 2 required)
         if num_reviews < 2:
             base_grade = base_grade * 0.5  # Half marks for incomplete reviews
+            return base_grade, "incomplete", -50  # Return early for incomplete reviews
         
-        # Time-based adjustments with more supportive messaging and bonus for thorough reviews
-        elif total_time_minutes > 20.0:  # Very thorough reviews - give bonus
-            base_grade = min(10.0, base_grade + 1.0)  # Add 1 point bonus, max 10/10
-        elif total_time_minutes < 0.5:  # Less than 30 seconds - almost impossible
-            # Flag for instructor follow-up rather than automatic penalty
-            base_grade = max(3.0, base_grade - 3.0)  # Still apply penalty but encourage contact
-        elif total_time_minutes < 2.0:  # Less than 2 minutes but more than 30 seconds
-            base_grade = max(3.0, base_grade - 3.0)  # Reduce by 3 points, minimum 3/10
+        # Improved graduated time-based adjustments with more supportive approach
+        time_adjustment = 0.0
+        time_category = ""
+        
+        if total_time_minutes > 20.0:  # Very thorough reviews
+            time_adjustment = +1.0
+            time_category = "thorough"
+        elif total_time_minutes > 15.0:  # Good thoroughness
+            time_adjustment = +0.5
+            time_category = "good"
+        elif total_time_minutes > 10.0:  # Adequate time
+            time_adjustment = 0.0
+            time_category = "adequate"
+        elif total_time_minutes > 5.0:  # Somewhat rushed but acceptable
+            time_adjustment = -0.5
+            time_category = "somewhat_rushed"
+        elif total_time_minutes > 2.0:  # Rushed but still reasonable
+            time_adjustment = -1.0
+            time_category = "rushed"
+        elif total_time_minutes > 0.5:  # Very rushed - significant concern
+            time_adjustment = -2.0
+            time_category = "very_rushed"
+        else:  # Extremely short - likely technical issue
+            time_adjustment = -3.0
+            time_category = "technical_issue"
+        
+        # Apply time adjustment
+        base_grade = min(10.0, max(2.0, base_grade + time_adjustment))
         
         # Apply penalty only for extreme bias (>2 standard deviations)
         if not pd.isna(severity_bias_zscore) and abs(severity_bias_zscore) > 2.0:
-            base_grade = max(4.0, base_grade - 2.0)  # Reduce by 2 points for extreme bias
+            base_grade = max(3.0, base_grade - 1.5)  # Reduced from -2.0 to -1.5
         
-        return base_grade
+        return base_grade, time_category, time_adjustment
 
-    def get_feedback_message(score, grade, total_time_minutes, num_reviews, severity_bias, severity_bias_zscore):
-        """Generate personalized feedback based on reliability score and review completion."""
+    def get_feedback_message(score, grade, total_time_minutes, num_reviews, severity_bias, severity_bias_zscore, time_category, time_adjustment):
+        """Generate personalized feedback with improved time messaging."""
         
-        # Review completion issues with more supportive messaging and recognition for thorough work
-        completion_warning = ""
+        # Review completion issues
         if num_reviews < 2:
-            completion_warning = f" **Important:** You completed only {num_reviews} review(s) instead of the required 2. This has resulted in half marks being awarded."
-        elif total_time_minutes > 20.0:  # Recognize thorough reviews
-            completion_warning = f" **Thank you for the thoughtful evaluation.** You spent {total_time_minutes:.1f} minutes on your reviews, which has earned you a bonus point."
-        elif total_time_minutes < 0.5:  # Less than 30 seconds
-            completion_warning = f" **Please Contact Me:** Your recorded time was {total_time_minutes:.1f} minutes ({total_time_minutes*60:.0f} seconds) for both reviews. This seems unusually short and may indicate a technical issue with the form or browser. Please email me to discuss - if there was a technical problem, I will adjust your grade accordingly. No questions asked, I just want to ensure fair assessment."
-        elif total_time_minutes < 2.0:
-            completion_warning = f" **Note:** Your total time for both reviews was {total_time_minutes:.1f} minutes. For thorough peer review, we typically expect 1-2 minutes per review minimum. If you had technical difficulties or other issues affecting your timing, please contact me to discuss."
+            completion_warning = f" <b>Important:</b> You completed only {num_reviews} review(s) instead of the required 2. This has resulted in half marks being awarded."
+            return f"Your peer review completion has been recorded.{completion_warning} Please ensure you complete all required reviews in future assignments."
         
-        # Bias explanation (informational, not necessarily penalized) with focus on academic standards
-        bias_explanation = ""
-        if not pd.isna(severity_bias) and abs(severity_bias) > 0.5:
-            if severity_bias > 0.5:
+        # Time-based feedback with more graduated and supportive messaging
+        time_feedback = ""
+        if time_category == "thorough":
+            time_feedback = f" <b>Excellent:</b> You spent {total_time_minutes:.1f} minutes on your reviews, demonstrating exceptional thoroughness. This has earned you a +1.0 bonus point."
+        elif time_category == "good":
+            time_feedback = f" <b>Great work:</b> You spent {total_time_minutes:.1f} minutes on your reviews, showing good thoroughness. This has earned you a +0.5 bonus point."
+        elif time_category == "adequate":
+            time_feedback = f" <b>Good:</b> You spent {total_time_minutes:.1f} minutes on your reviews, which is appropriate for thoughtful evaluation."
+        elif time_category == "somewhat_rushed":
+            time_feedback = f" <b>Note:</b> You spent {total_time_minutes:.1f} minutes on your reviews. While acceptable, taking a bit more time could improve the depth of your evaluations (-0.5 points)."
+        elif time_category == "rushed":
+            time_feedback = f" <b>Feedback:</b> You spent {total_time_minutes:.1f} minutes on your reviews. For more thorough peer evaluation, consider spending 1-2 minutes per review section (-1.0 point)."
+        elif time_category == "very_rushed":
+            time_feedback = f" <b>Concern:</b> You spent {total_time_minutes:.1f} minutes on your reviews. This seems quite rushed for thoughtful evaluation. Please take more time to provide meaningful feedback (-2.0 points)."
+        elif time_category == "technical_issue":
+            time_feedback = f" <b>Please Contact Me:</b> Your recorded time was {total_time_minutes:.1f} minutes ({total_time_minutes*60:.0f} seconds). This seems unusually short and may indicate a technical issue. Please email me to discuss - if there was a technical problem, I will adjust your grade accordingly (-3.0 points pending review)."
+        
+        # Bias explanation with more educational focus
+        bias_feedback = ""
+        if not pd.isna(severity_bias) and abs(severity_bias) > 0.3:  # Lower threshold for educational feedback
+            if severity_bias > 0.3:
                 if not pd.isna(severity_bias_zscore) and severity_bias_zscore > 2.0:
-                    bias_explanation = f" Your reviews rate significantly higher than peers (z-score: {severity_bias_zscore:.1f}), indicating potential grade inflation concerns. This extreme bias has affected your grade."
+                    bias_feedback = f" <b>Rating Pattern:</b> Your reviews consistently rate higher than peers (z-score: {severity_bias_zscore:.1f}). Consider whether you're applying the evaluation criteria as intended. This extreme pattern has resulted in a -1.5 point adjustment."
                 else:
-                    bias_explanation = f" Your reviews tend to rate higher than peers (avg difference: +{severity_bias:.1f}), which may indicate generous scoring tendencies. Consider whether your standards align with the evaluation criteria. This is noted but not penalized."
+                    bias_feedback = f" <b>Rating Observation:</b> Your reviews tend to rate higher than peers (avg difference: +{severity_bias:.1f}). This may indicate generous scoring - consider the full range of the rating scale. No penalty applied."
             else:
                 if not pd.isna(severity_bias_zscore) and severity_bias_zscore < -2.0:
-                    bias_explanation = f" Your reviews rate significantly lower than peers (z-score: {severity_bias_zscore:.1f}), which may indicate very high standards or severity bias. This extreme bias has affected your grade."
+                    bias_feedback = f" <b>Rating Pattern:</b> Your reviews consistently rate lower than peers (z-score: {severity_bias_zscore:.1f}). While high standards are good, consider if you're being overly critical. This extreme pattern has resulted in a -1.5 point adjustment."
                 else:
-                    bias_explanation = f" Your reviews tend to rate lower than peers (avg difference: {severity_bias:.1f}), which may indicate high standards or careful evaluation. This is noted but not penalized."
+                    bias_feedback = f" <b>Rating Observation:</b> Your reviews tend to rate lower than peers (avg difference: {severity_bias:.1f}). High standards are valuable - just ensure you're recognizing good work when present. No penalty applied."
         
         # Base reliability message with more encouraging tone
         base_message = ""
         if pd.isna(score) or score == 'N/A':
             base_message = "Your peer review completion has been recorded. Insufficient data for detailed reliability analysis."
         elif score >= 85:
-            base_message = "Excellent work! Your reviews show high reliability and consistency with peer consensus. You demonstrate strong critical evaluation skills and are contributing meaningfully to the peer learning process."
+            base_message = "Outstanding work! Your reviews demonstrate excellent reliability and strong alignment with peer consensus. You're contributing meaningfully to the peer learning process."
         elif score >= 75:
-            base_message = "Good work! Your reviews are generally reliable and consistent with peer consensus. You show solid understanding of the evaluation criteria and are developing strong peer assessment skills."
+            base_message = "Excellent work! Your reviews show strong reliability and good consistency with peer consensus. You demonstrate solid understanding of the evaluation criteria."
         elif score >= 65:
-            base_message = "Good progress! Your reviews show reasonable consistency with peer consensus. You're developing good evaluation skills - with continued practice, you can further strengthen your alignment with academic assessment standards."
+            base_message = "Good work! Your reviews show reasonable consistency with peer consensus. You're developing strong evaluation skills with good understanding of the criteria."
         elif score >= 55:
-            base_message = "You're making progress in developing peer review skills. Your reviews show moderate consistency with peers. Focusing on the evaluation criteria and examples from class discussions will help you build stronger assessment abilities."
+            base_message = "Satisfactory work! Your reviews show moderate consistency with peers. Continue focusing on the evaluation criteria to strengthen your assessment alignment."
         elif score >= 45:
-            base_message = "Your reviews show some variation from peer consensus, which can reflect independent thinking or different assessment perspectives. Consider discussing evaluation approaches with classmates or the instructor to calibrate your assessments."
+            base_message = "Your reviews show some consistency challenges. Consider using more of the rating scale range and referring back to the evaluation guidelines to better distinguish performance levels."
         else:
-            base_message = "Your reviews show significant variation from peer consensus. This presents a great learning opportunity - let's discuss evaluation strategies to help you develop stronger alignment with academic assessment standards."
+            base_message = "Your reviews show significant variance from peer consensus. Please review the evaluation guidelines carefully and consider how to better align with the assessment criteria."
         
-        # Support and follow-up message
-        appeal_message = ""
-        if score < 65 or total_time_minutes < 2.0 or num_reviews < 2 or (not pd.isna(severity_bias_zscore) and abs(severity_bias_zscore) > 2.0):
-            appeal_message = " If you have questions about this assessment, please contact me."
+        # Support message for lower scores
+        support_message = ""
+        if score < 55 or (not pd.isna(severity_bias_zscore) and abs(severity_bias_zscore) > 2.0) or time_category in ["very_rushed", "technical_issue"]:
+            support_message = " If you have questions about this assessment or need clarification on the evaluation criteria, please contact me."
         
-        return base_message + completion_warning + appeal_message
+        return base_message + time_feedback + bias_feedback + support_message
 
     student_feedback_sections = []
     if not reviewer_scores.empty:
@@ -516,8 +552,8 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
             severity_bias = row.get('severity_bias', 0)
             severity_bias_zscore = row.get('severity_bias_zscore', 0)
             
-            grade = reliability_score_to_grade(score, total_time, num_reviews, severity_bias_zscore)
-            feedback = get_feedback_message(score, grade, total_time, num_reviews, severity_bias, severity_bias_zscore)
+            grade, time_category, time_adjustment = reliability_score_to_grade(score, total_time, num_reviews, severity_bias_zscore)
+            feedback = get_feedback_message(score, grade, total_time, num_reviews, severity_bias, severity_bias_zscore, time_category, time_adjustment)
             student_id = row.get('student_id_clean', row['reviewer_email'])
             student_name = student_names.get(row['reviewer_email'], 'Name not available')
             
@@ -655,7 +691,7 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
         html += "<div style='background-color: white; padding: 10px; border-left: 3px solid #007acc; font-style: italic;'>"
         html += "<p>Hi [Student Name],</p>"
         html += "<p>I noticed your peer review completion time was quite short (under 30 seconds). This might indicate a technical issue with the form or browser.</p>"
-        html += "<p>If you experienced any difficulties, please let me know and I'll be happy to adjust your grade. No explanation needed - I just want to ensure everyone gets fair assessment.</p>"
+        html += "<p>If you experienced any difficulties, please let me know what they were and I'll adjust your grade. - I just want to ensure everyone gets fair assessment.</p>"
         html += "<p>Best regards,<br>[Your name]</p>"
         html += "</div></div></div>"
         
@@ -763,12 +799,16 @@ def build_enhanced_report(review: pd.DataFrame, roster: pd.DataFrame) -> str:
             • 6: Reliability Score 45-54 (Needs Improvement)<br>
             • 5: Reliability Score 35-44 (Poor)<br>
             • 4: Reliability Score <35 (Very Poor)<br><br>
-            <strong>Grading Adjustments:</strong><br>
-            • <span style="color: green;">Thorough reviews (>20 minutes total): +1 bonus point</span><br>
+            <strong>Grading Adjustments (Graduated Time System):</strong><br>
+            • <span style="color: green;">Exceptional thoroughness (>20 minutes total): +1.0 bonus point</span><br>
+            • <span style="color: green;">Good thoroughness (15-20 minutes total): +0.5 bonus point</span><br>
+            • Adequate time (10-15 minutes total): No adjustment<br>
+            • Somewhat rushed (5-10 minutes total): -0.5 points<br>
+            • Rushed (2-5 minutes total): -1.0 point<br>
+            • Very rushed (<2 minutes total): -2.0 points<br>
+            • Extremely short (<30 seconds total): -3.0 points + instructor follow-up<br>
             • Incomplete reviews (<2 required): Half marks<br>
-            • Very short completion time (<30 seconds total): -3 points + instructor follow-up<br>
-            • Insufficient time (<2 minutes total for both reviews): -3 points<br>
-            • Extreme bias (>2 standard deviations from peer average): -2 points<br>
+            • Extreme bias (>2 standard deviations from peer average): -1.5 points<br>
             • Minor bias variations are noted but not penalized<br><br>
             <strong>Time Measurement:</strong> Total time refers to combined time for both required peer reviews.
         </div>

@@ -8,7 +8,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import logging
-from .enhanced_instructor_report import read_review, read_roster, build_enhanced_report
+from enhanced_instructor_report import read_review, read_roster, build_enhanced_report
 
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(__name__)

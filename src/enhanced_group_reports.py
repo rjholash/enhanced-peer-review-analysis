@@ -14,7 +14,7 @@ from pathlib import Path
 
 # Import the enhanced analysis functions
 sys.path.append(str(Path(__file__).parent))
-from .enhanced_instructor_report import (
+from enhanced_instructor_report import (
     read_review, read_roster, calculate_reviewer_scores, 
     calculate_cronbach_alpha, calculate_icc
 )
