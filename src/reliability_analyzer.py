@@ -56,7 +56,7 @@
         
         # Overall dataset statistics
         overall_matrix = self.data[self.rating_cols].values
-        from enhanced_instructor_report import calculate_cronbach_alpha
+        from instructor_report import calculate_cronbach_alpha
         all_results['overall_stats'] = {
             'total_reviews': len(self.data),
             'total_reviewers': self.data['email_clean'].nunique(),
@@ -168,7 +168,7 @@
             if len(group_data) >= 2:
                 rating_matrix = group_data[self.rating_cols].values
                 if len(self.rating_cols) >= 2:
-                    from enhanced_instructor_report import calculate_icc
+                    from instructor_report import calculate_icc
                     icc_data = pd.DataFrame(rating_matrix.T)
                     icc_value, _ = calculate_icc(icc_data)
                     if not np.isnan(icc_value):
@@ -200,7 +200,7 @@
         for group_id, group_data in self.data.groupby('Group#_reviewing'):
             if len(group_data) >= 2:
                 rating_matrix = group_data[self.rating_cols].values
-                from enhanced_instructor_report import calculate_cronbach_alpha
+                from instructor_report import calculate_cronbach_alpha
                 alpha = calculate_cronbach_alpha(pd.DataFrame(rating_matrix))
                 if not np.isnan(alpha):
                     group_alphas.append(alpha)
@@ -237,7 +237,7 @@ def analyze_peer_review_file(review_file: Path, roster_file: Path, output_dir: P
     """
     Convenience function to run complete reliability analysis on peer review files.
     """
-    from enhanced_instructor_report import read_review, read_roster
+    from instructor_report import read_review, read_roster
     
     # Load data
     review_df = read_review(review_file)
