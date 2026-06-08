@@ -10,10 +10,19 @@ Students work in groups to create YouTube videos reviewing products that make sc
 My Workflow
 
 - Download class list from D2L with group assignments
-- Use Excel to randomly assign students to review 2 groups (not their own)
+- Run the automated assigner (`python src/assign_reviews.py`) to randomly assign every student two non-self groups to review
 - Send mail-merge emails with review assignments and Form link
 - Download completed reviews from Microsoft Forms
 - Run this analysis system to generate instructor reports and student feedback
+
+### Assigning Reviews with `assign_reviews.py`
+
+1. Export the D2L roster (CSV works best) with columns for student email, group, and the URL to that group's video. The script auto-detects headers that contain the words "email" and "group" and treats the remaining column as the URL.
+2. Run `python src/assign_reviews.py`. A small Tkinter file picker appears; choose the roster CSV and let the script load it.
+3. The tool seeds the randomizer (see `RANDOM_SEED` at the top of `src/assign_reviews.py`) so results are reproducible. Each student is assigned two review groups that are never their own, and the total reviewer load is balanced across groups.
+4. The output file is saved next to your roster with the suffix `-with-reviews.csv`, containing `ReviewGroup`/`ReviewURL` columns for both assignments. Use this file for your mail merge step.
+
+> Tip: If you ever want a different randomized set, change the `RANDOM_SEED` value and re-run the script.
 
 ## Why This Works
 
@@ -31,6 +40,7 @@ My Workflow
 - **`enhanced_gui_launcher.py`** - User-friendly GUI interface for instructor reports (wraps enhanced_instructor_report in GUI for selecting files and folders)
 - **`enhanced_group_reports.py`** - Individual group report generator with reliability metrics
 - **`reliability_analyzer.py`** - Standalone comprehensive statistical analysis tool
+- **`assign_reviews.py`** - CSV-based reviewer assignment generator that balances two non-self review targets per student
 
 #### Supporting Files
 
