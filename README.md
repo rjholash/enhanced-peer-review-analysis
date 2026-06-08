@@ -88,24 +88,96 @@ student2@ucalgary.ca,30012346,Group 02
 
 #### If you only need the roster for `assign_reviews.py`
 
-For the review-assignment script, the minimum CSV columns are:
+For the review-assignment script, you need a CSV file with **exactly three columns**: Email, Group, and URL.
 
-```text
-Email
-Group
-URL
+##### Required Columns
+
+The script looks for column headers containing these keywords (case-insensitive):
+
+| Keyword | Purpose | Acceptable Column Names | ❌ Unacceptable Names |
+|---|---|---|---|
+| **email** | Student's email address | `Email`, `email`, `E-mail`, `EmailAddress` | `E-Mail`, `MailBox`, `Student ID` |
+| **group** | The group the student belongs to | `Group`, `group`, `Product Review Groups`, `GroupName` | `Team`, `Section`, `Class` |
+| *remaining* | Link to the group's submission | `URL`, `SubmissionURL`, `VideoLink` | (any third column works) |
+
+**Important**: Your column headers must **contain** these keywords. For example:
+- ✅ `Product Review Groups` works (contains "group")
+- ✅ `EmailAddress` works (contains "email")
+- ❌ `Student ID` does NOT work (doesn't contain "email")
+- ❌ `Team Name` does NOT work (doesn't contain "group")
+
+##### Step-by-Step Instructions
+
+**Step 1: Download Student Emails from D2L**
+
+1. In Brightspace, go to `Course Admin` → `Classlist`
+2. Click `Export` and download the CSV
+3. Open the file in Excel
+4. Keep **only** the email column; delete all others
+5. Rename the column header to one of these: **`Email`** (recommended), or anything containing "email"
+
+**Step 2: Add Group Assignments**
+
+1. In Brightspace, go to `Course Admin` → `Groups` → `Manage Groups`
+2. Find your submission category and export the groups
+3. Identify which group each student belongs to
+4. Add a new column to your Excel file with header: **`Group`** (recommended), or anything containing "group"
+5. Fill in the group names (e.g., `Group 01`, `Group 02`, `Team A`, etc.)
+   - All students in the same group must have the same group name
+
+**Step 3: Add Submission URLs**
+
+1. Add a third column with header: **`URL`** (recommended), or anything containing "url"
+2. Paste the link to each group's submission:
+   - D2L Dropbox: right-click the folder and copy the link
+   - Google Drive/OneDrive: copy the share link
+   - YouTube: paste the video URL
+3. **All students in the same group must have the same URL**
+
+**Step 4: Save and Run**
+
+1. Save your file as `.csv` (comma-separated values)
+2. Run: `python src/assign_reviews.py`
+3. Select your file using the file picker
+4. The script outputs a new file ending in `-with-reviews.csv` with two additional columns:
+   - `ReviewGroup1` and `ReviewURL1` (first assigned review)
+   - `ReviewGroup2` and `ReviewURL2` (second assigned review)
+
+##### Example Files
+
+**Best Practice (Recommended Names):**
+```csv
+Email,Group,URL
+alice@ucalgary.ca,Group 01,https://www.youtube.com/watch?v=abc123
+bob@ucalgary.ca,Group 01,https://www.youtube.com/watch?v=abc123
+charlie@ucalgary.ca,Group 02,https://youtu.be/def456
+diana@ucalgary.ca,Group 02,https://youtu.be/def456
 ```
 
-This file is separate from the instructor-analysis roster described below.
+**Also Works (Alternative Column Names):**
+```csv
+E-mail,Product Review Groups,SubmissionURL
+alice@ucalgary.ca,Group 01,https://www.youtube.com/watch?v=abc123
+bob@ucalgary.ca,Group 01,https://www.youtube.com/watch?v=abc123
+charlie@ucalgary.ca,Group 02,https://youtu.be/def456
+diana@ucalgary.ca,Group 02,https://youtu.be/def456
+```
 
-### Assigning Reviews with `assign_reviews.py`
+**Does NOT Work (Missing Keywords):**
+```csv
+StudentEmail,Team,Link
+alice@ucalgary.ca,Group 01,https://www.youtube.com/watch?v=abc123
+```
+⚠️ This fails because "Team" doesn't contain "group"
 
-1. Export the D2L roster (CSV works best) with columns for student email, group, and the URL to that group's video. The script auto-detects headers that contain the words "email" and "group" and treats the remaining column as the URL.
-2. Run `python src/assign_reviews.py`. A small Tkinter file picker appears; choose the roster CSV and let the script load it.
-3. The tool seeds the randomizer (see `RANDOM_SEED` at the top of `src/assign_reviews.py`) so results are reproducible. Each student is assigned two review groups that are never their own, and the total reviewer load is balanced across groups.
-4. The output file is saved next to your roster with the suffix `-with-reviews.csv`, containing `ReviewGroup`/`ReviewURL` columns for both assignments. Use this file for your mail merge step.
+##### Troubleshooting
 
-> Tip: If you ever want a different randomized set, change the `RANDOM_SEED` value and re-run the script.
+| Error | Cause | Fix |
+|---|---|---|
+| "No email-like column found" | Your email column header doesn't contain "email" | Rename column to `Email`, `E-mail`, or `EmailAddress` |
+| "No group-like column found" | Your group column header doesn't contain "group" | Rename column to `Group`, `Product Review Groups`, or `GroupName` |
+| "Could not uniquely identify URL column" | You don't have exactly 3 columns | Delete extra columns so you have exactly: Email, Group, URL |
+| Getting different random assignments | You changed `RANDOM_SEED` | Keep the same seed value to get the same results again |
 
 ## Why This Works
 
