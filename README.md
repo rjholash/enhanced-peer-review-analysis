@@ -17,7 +17,8 @@ This is the primary entry point for the project. It asks you to point to the spe
 
 ### The Assignment
 Students work in groups to create YouTube videos reviewing products that make scientific claims. They investigate whether the science actually supports these claims. Each student then peer reviews 2 other groups' videos using a Microsoft Form.
-My Workflow
+
+### My Workflow
 
 - Download class list from D2L with group assignments
 - Run the automated assigner (`python src/assign_reviews.py`) to randomly assign every student two non-self groups to review
@@ -25,127 +26,60 @@ My Workflow
 - Download completed reviews from Microsoft Forms
 - Run `python src/gui_launcher.py` to generate the instructor report, student feedback, and consolidated grade exports
 
-### Assigning Reviews with `assign_reviews.py`
+---
 
-1. Export the D2L roster (CSV works best) with columns for student email, group, and the URL to that group's video. The script auto-detects headers that contain the words "email" and "group" and treats the remaining column as the URL.
-2. Run `python src/assign_reviews.py`. A small Tkinter file picker appears; choose the roster CSV and let the script load it.
-3. The tool seeds the randomizer (see `RANDOM_SEED` at the top of `src/assign_reviews.py`) so results are reproducible. Each student is assigned two review groups that are never their own, and the total reviewer load is balanced across groups.
-4. The output file is saved next to your roster with the suffix `-with-reviews.csv`, containing `ReviewGroup`/`ReviewURL` columns for both assignments. Use this file for your mail merge step.
+## Step 1: Assign Peer Reviews with `assign_reviews.py`
 
-> Tip: If you ever want a different randomized set, change the `RANDOM_SEED` value and re-run the script.
+This tool takes a simple 3-column file (Email, Group, URL) and assigns each student two review groups.
 
-### Downloading the Student List from D2L Brightspace
+### Input: Prepare Your CSV File
 
-The analysis scripts work best when your roster file contains three pieces of information for each student:
+You need **exactly three columns**:
 
-```text
-Email
-OrgDefinedId
-Product Review Groups
-```
-
-The code is flexible about header names, but those three values must be present in the file.
-
-#### Recommended D2L workflow
-
-1. In Brightspace, open your course and go to `Course Admin`.
-2. Open `Classlist`.
-3. Use `Export` if it is available for your role.
-4. Export a CSV that includes at least:
-
-```text
-Email
-Org Defined ID
-First Name
-Last Name
-```
-
-5. Then open `Course Admin > Groups`.
-6. In `Manage Groups`, use `Export` if it is available.
-7. Choose the category that contains your project or presentation groups, then export all groups in that category.
-8. Confirm that the exported group file includes each student and the group name they belong to.
-9. Merge the Classlist export and Groups export in Excel so that each row contains the student's email, org-defined ID, and group.
-10. Save the final file as either `.xlsx` or `.csv`.
-
-#### Final roster format to use with this project
-
-Your merged roster should end up looking roughly like this:
-
-```text
-Email,OrgDefinedId,Product Review Groups
-student1@ucalgary.ca,30012345,Group 01
-student2@ucalgary.ca,30012346,Group 02
-```
-
-#### Important notes
-
-- The `Email` values in the roster must match the email values in the Microsoft Forms review export.
-- `OrgDefinedId` should be the LMS student identifier, not a username or display name.
-- `Product Review Groups` can be values like `Group 01`, `Group 1`, `Team 01`, or just `01`. The loader now extracts the group number automatically.
-- Some course shells may use a slightly different header such as `Produce Review Groups`. The loader accepts common variants.
-- If Brightspace does not show `Export` in `Classlist` or `Groups`, that is usually a role-permission issue rather than a problem with this project.
-- If your course already has a single export containing email, org-defined ID, and group, you do not need to do the merge step.
-
-#### If you only need the roster for `assign_reviews.py`
-
-For the review-assignment script, you need a CSV file with **exactly three columns**: Email, Group, and URL.
-
-##### Required Columns
-
-The script looks for column headers containing these keywords (case-insensitive):
-
-| Keyword | Purpose | Acceptable Column Names | ❌ Unacceptable Names |
+| Column Keyword | Purpose | Acceptable Names | ❌ Won't Work |
 |---|---|---|---|
-| **email** | Student's email address | `Email`, `email`, `E-mail`, `EmailAddress` | `E-Mail`, `MailBox`, `Student ID` |
-| **group** | The group the student belongs to | `Group`, `group`, `Product Review Groups`, `GroupName` | `Team`, `Section`, `Class` |
-| *remaining* | Link to the group's submission | `URL`, `SubmissionURL`, `VideoLink` | (any third column works) |
+| **email** | Student's email | `Email`, `E-mail`, `EmailAddress` | `Student ID`, `Name` |
+| **group** | Student's group | `Group`, `Product Review Groups`, `GroupName` | `Team`, `Section` |
+| **url** | Link to submission | `URL`, `SubmissionURL`, `VideoLink` | (any 3rd column) |
 
-**Important**: Your column headers must **contain** these keywords. For example:
+**Key Rule**: Column headers must **contain** these keywords (case-insensitive).
 - ✅ `Product Review Groups` works (contains "group")
-- ✅ `EmailAddress` works (contains "email")
-- ❌ `Student ID` does NOT work (doesn't contain "email")
-- ❌ `Team Name` does NOT work (doesn't contain "group")
+- ❌ `Team Name` fails (doesn't contain "group")
 
-##### Step-by-Step Instructions
+### How to Create the File
 
-**Step 1: Download Student Emails from D2L**
-
-1. In Brightspace, go to `Course Admin` → `Classlist`
+**Step 1: Get Student Emails from D2L**
+1. In Brightspace: `Course Admin` → `Classlist`
 2. Click `Export` and download the CSV
-3. Open the file in Excel
-4. Keep **only** the email column; delete all others
-5. Rename the column header to one of these: **`Email`** (recommended), or anything containing "email"
+3. Open in Excel, keep only the email column
+4. Rename header to **`Email`** or anything containing "email"
 
-**Step 2: Add Group Assignments**
-
-1. In Brightspace, go to `Course Admin` → `Groups` → `Manage Groups`
-2. Find your submission category and export the groups
-3. Identify which group each student belongs to
-4. Add a new column to your Excel file with header: **`Group`** (recommended), or anything containing "group"
-5. Fill in the group names (e.g., `Group 01`, `Group 02`, `Team A`, etc.)
-   - All students in the same group must have the same group name
+**Step 2: Get Group Assignments from D2L**
+1. In Brightspace: `Course Admin` → `Groups` → `Manage Groups`
+2. Export your submission category's groups
+3. In Excel, add a new column with header **`Group`** or anything containing "group"
+4. Fill in group names for each student (e.g., `Group 01`, `Group 02`)
+   - All students in the same group must have the **same group name**
 
 **Step 3: Add Submission URLs**
-
-1. Add a third column with header: **`URL`** (recommended), or anything containing "url"
-2. Paste the link to each group's submission:
-   - D2L Dropbox: right-click the folder and copy the link
-   - Google Drive/OneDrive: copy the share link
-   - YouTube: paste the video URL
+1. Add a third column with header **`URL`** or anything containing "url"
+2. Add the submission link for each group:
+   - **D2L Dropbox**: Right-click folder → copy link
+   - **Google Drive/OneDrive**: Copy share link
+   - **YouTube**: Paste video URL
 3. **All students in the same group must have the same URL**
 
 **Step 4: Save and Run**
-
-1. Save your file as `.csv` (comma-separated values)
+1. Save as `.csv` file
 2. Run: `python src/assign_reviews.py`
-3. Select your file using the file picker
-4. The script outputs a new file ending in `-with-reviews.csv` with two additional columns:
-   - `ReviewGroup1` and `ReviewURL1` (first assigned review)
-   - `ReviewGroup2` and `ReviewURL2` (second assigned review)
+3. Select your file in the file picker
+4. Output: New file with `-with-reviews.csv` suffix containing:
+   - `ReviewGroup1` & `ReviewURL1` (first assigned review)
+   - `ReviewGroup2` & `ReviewURL2` (second assigned review)
 
-##### Example Files
+### Example Files
 
-**Best Practice (Recommended Names):**
+**Best Practice (Recommended):**
 ```csv
 Email,Group,URL
 alice@ucalgary.ca,Group 01,https://www.youtube.com/watch?v=abc123
@@ -154,7 +88,7 @@ charlie@ucalgary.ca,Group 02,https://youtu.be/def456
 diana@ucalgary.ca,Group 02,https://youtu.be/def456
 ```
 
-**Also Works (Alternative Column Names):**
+**Also Works (Alternative Names):**
 ```csv
 E-mail,Product Review Groups,SubmissionURL
 alice@ucalgary.ca,Group 01,https://www.youtube.com/watch?v=abc123
@@ -163,21 +97,79 @@ charlie@ucalgary.ca,Group 02,https://youtu.be/def456
 diana@ucalgary.ca,Group 02,https://youtu.be/def456
 ```
 
-**Does NOT Work (Missing Keywords):**
+**Does NOT Work:**
 ```csv
 StudentEmail,Team,Link
 alice@ucalgary.ca,Group 01,https://www.youtube.com/watch?v=abc123
 ```
-⚠️ This fails because "Team" doesn't contain "group"
+❌ "Team" doesn't contain "group"
 
-##### Troubleshooting
+### Troubleshooting `assign_reviews.py`
 
-| Error | Cause | Fix |
-|---|---|---|
-| "No email-like column found" | Your email column header doesn't contain "email" | Rename column to `Email`, `E-mail`, or `EmailAddress` |
-| "No group-like column found" | Your group column header doesn't contain "group" | Rename column to `Group`, `Product Review Groups`, or `GroupName` |
-| "Could not uniquely identify URL column" | You don't have exactly 3 columns | Delete extra columns so you have exactly: Email, Group, URL |
-| Getting different random assignments | You changed `RANDOM_SEED` | Keep the same seed value to get the same results again |
+| Error | Fix |
+|---|---|
+| "No email-like column found" | Rename column to `Email`, `E-mail`, or `EmailAddress` |
+| "No group-like column found" | Rename column to `Group`, `Product Review Groups`, or `GroupName` |
+| "Could not uniquely identify URL column" | Delete extra columns—you need exactly 3: Email, Group, URL |
+| Different random assignments each time | You changed `RANDOM_SEED`. Keep the same value to repeat results |
+
+> **Tip**: If you want different randomized assignments, change `RANDOM_SEED` at the top of `src/assign_reviews.py` and re-run.
+
+---
+
+## Step 2: Prepare Data for Instructor Analysis with `gui_launcher.py`
+
+**NOTE**: This step is **optional**. Skip this section if you only need to assign reviews.
+
+If you also want to generate the instructor analysis report, you'll need a roster file with additional information.
+
+### Input: Prepare Your Roster for Analysis
+
+You need a CSV with at least these fields (header names flexible):
+
+| Data | Purpose |
+|---|---|
+| Email | Student's email (must match Microsoft Forms export) |
+| OrgDefinedID | Student's institutional ID from D2L |
+| Product Review Groups | The group the student belongs to |
+
+### How to Create the Roster File
+
+**Step 1: Export Classlist from D2L**
+1. In Brightspace: `Course Admin` → `Classlist`
+2. Click `Export`
+3. Keep these columns (you can keep others, but at minimum need these):
+   - `Email`
+   - `Org Defined ID`
+   - `First Name` (optional but helpful)
+   - `Last Name` (optional but helpful)
+
+**Step 2: Export Groups from D2L**
+1. In Brightspace: `Course Admin` → `Groups` → `Manage Groups`
+2. Export your submission category
+3. Note which group each student belongs to
+
+**Step 3: Merge Files**
+1. In the Classlist file, add a new column: `Product Review Groups`
+2. For each student, fill in their group name from the Groups export
+3. Save as `.xlsx` or `.csv`
+
+### Expected Roster Format
+
+```csv
+Email,OrgDefinedId,FirstName,LastName,Product Review Groups
+alice@ucalgary.ca,30012345,Alice,Smith,Group 01
+bob@ucalgary.ca,30012346,Bob,Jones,Group 01
+charlie@ucalgary.ca,30012347,Charlie,Brown,Group 02
+diana@ucalgary.ca,30012348,Diana,Davis,Group 02
+```
+
+### Important Notes
+
+- Email values must match the Microsoft Forms review export exactly
+- OrgDefinedId should be the D2L student ID, not a username
+- Group names can be `Group 01`, `Group 1`, `Team A`, etc.—any consistent format works
+- If Brightspace doesn't show `Export`, that's usually a permissions issue, not a project problem
 
 ## Why This Works
 
